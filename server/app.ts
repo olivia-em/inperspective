@@ -15,7 +15,7 @@ const requestHandler = createRequestHandler(
 
 export default async (request: Request, context: Context) => {
   return requestHandler(request, {
-    VALUE_FROM_NETLIFY: "Hello from Netlify",
+    VALUE_FROM_NETLIFY: "Hello from Olivia",
   });
 };
 
