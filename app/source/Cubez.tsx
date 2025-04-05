@@ -2,10 +2,10 @@ import React, { useRef, useState, useEffect } from 'react'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
-interface ResponsiveImageStripProps {
-  imagePaths: string[]
-  maxSize?: number 
-  verticalOffset?: number
+interface ImageState {
+  rotation: THREE.Euler
+  position: THREE.Vector3
+  isActive: boolean
 }
 
 interface ImageData {
@@ -13,10 +13,28 @@ interface ImageData {
   aspectRatio: number
 }
 
+interface ResponsiveImageStripProps {
+  imagePaths: string[]
+  maxSize?: number 
+  verticalOffset?: number
+  wasRotating: boolean 
+  allowInteraction?: boolean
+  zPosition?: number
+  imageStates: ImageState[]
+  onRotate?: (index: number, deltaX: number, deltaY: number) => void
+  isBackLayer: boolean
+}
+
 export function ResponsiveImageStrip({ 
   imagePaths, 
   maxSize = 4,
-  verticalOffset = 0 
+  verticalOffset = 0,
+  allowInteraction = true,
+  wasRotating = false,
+  zPosition = 0,
+  imageStates,
+  onRotate,
+  isBackLayer
 }: ResponsiveImageStripProps) {
   const groupRef = useRef<THREE.Group>(null)
   const [images, setImages] = useState<ImageData[]>([])
@@ -74,6 +92,7 @@ export function ResponsiveImageStrip({
 
   // Function to handle image click
   const handleImageClick = (index: number, position: THREE.Vector3) => {
+    if (!allowInteraction || wasRotating) return;
     // If clicking the same image while zoomed, reset to original view
     if (focusedIndex === index) {
       targetPosition.current.set(0, 0, 0)
@@ -91,6 +110,7 @@ export function ResponsiveImageStrip({
   // Handle click outside to reset zoom
   useEffect(() => {
     const handlePointerDown = (e: PointerEvent) => {
+      if (!allowInteraction || wasRotating) return;
       if (focusedIndex !== null) {
         // Convert to normalized coordinates
         const mouse = new THREE.Vector2(
@@ -117,7 +137,7 @@ export function ResponsiveImageStrip({
     
     window.addEventListener('pointerdown', handlePointerDown)
     return () => window.removeEventListener('pointerdown', handlePointerDown)
-  }, [focusedIndex, camera])
+  }, [focusedIndex, camera, allowInteraction, wasRotating])
 
   if (images.length === 0) return null
 
@@ -140,7 +160,7 @@ export function ResponsiveImageStrip({
   const heights = images.map(img => baseWidth / img.aspectRatio);
 
   return (
-    <group ref={groupRef} position={[0, verticalOffset, 0]}>
+    <group ref={groupRef} position={[0, verticalOffset, zPosition]}>
       {images.map(({ texture, aspectRatio }, i) => {
         // Always use fixed width
         const width = baseWidth;
@@ -189,11 +209,20 @@ export function ResponsiveImageStrip({
         return (
           <mesh 
             key={i} 
-            position={position}
+            position={isBackLayer ? 
+              (imageStates[i].rotation.equals(new THREE.Euler(0, 0, 0)) ? 
+                new THREE.Vector3(position.x, position.y, -1) : 
+                imageStates[i].position
+              ) : 
+              position
+            }
+            rotation={isBackLayer ? new THREE.Euler(0, 0, 0) : imageStates[i].rotation}
             scale={[scale, scale, scale]}
+            userData={{ index: i, basePosition: position }}
             onClick={(e) => {
-              e.stopPropagation(); // Prevent event bubbling
-              handleImageClick(i, position);
+              if (isBackLayer) return
+              e.stopPropagation()
+              handleImageClick(i, position)
             }}
           >
             <planeGeometry args={[width, height]} />
@@ -214,36 +243,74 @@ export function ResponsiveImageStrip({
 function Scene() {
   const { scene, camera, gl } = useThree()
   const isDragging = useRef(false)
+  const wasRotating = useRef(false)
   const lastPosition = useRef({ x: 0, y: 0 })
   const activeCube = useRef<THREE.Mesh | null>(null)
-  const imagePaths = [
-    '/assets/first.png',
-    '/assets/next.png',
-    '/assets/then.png',
-    '/assets/and.png',
-    '/assets/fin.png',
-  ]
+  const allowImageInteraction = useRef(true)
   
+  // Add image states
+  const [imageStates, setImageStates] = useState<ImageState[]>(() => 
+    Array(5).fill(null).map(() => ({
+      rotation: new THREE.Euler(0, 0, 0),
+      position: new THREE.Vector3(0, 0, 0),
+      isActive: false
+    }))
+  )
+
+  const getBackPosition = (rotation: THREE.Euler, basePosition: THREE.Vector3) => {
+    const maxOffset = 1.5 // Increased from 0.5 for more dramatic movement
+    return new THREE.Vector3(
+      basePosition.x + Math.sin(rotation.y) * maxOffset,
+      basePosition.y + Math.sin(rotation.x) * maxOffset,
+      -1
+    )
+  }
   
-  // Set up global event listeners
+
+  const handleImageRotation = (index: number, deltaX: number, deltaY: number, basePosition: THREE.Vector3) => {
+    setImageStates(prev => prev.map((state, i) => {
+      if (i === index) {
+        const newRotation = new THREE.Euler(
+          state.rotation.x + deltaY,
+          state.rotation.y + deltaX,
+          0
+        )
+        return {
+          ...state,
+          rotation: newRotation,
+          position: getBackPosition(newRotation, basePosition)
+        }
+      }
+      return state
+    }))
+  }
+
   useEffect(() => {
     const canvas = gl.domElement
     
     const handlePointerDown = (e: PointerEvent) => {
       isDragging.current = true
+      wasRotating.current = false
+      allowImageInteraction.current = true
       lastPosition.current = { x: e.clientX, y: e.clientY }
       
-      // Check if we're clicking on a cube by doing a ray cast
-      const raycaster = new THREE.Raycaster()
       const mouse = new THREE.Vector2(
         (e.clientX / window.innerWidth) * 2 - 1, 
         -(e.clientY / window.innerHeight) * 2 + 1
       )
-      
+    
+      const raycaster = new THREE.Raycaster()
       raycaster.setFromCamera(mouse, camera)
-      const intersects = raycaster.intersectObjects(scene.children, true)
       
-      // Find the first mesh that's not our background plane
+      const objectsToTest = scene.children.flatMap(child => {
+        if (child instanceof THREE.Group) {
+          return child.children
+        }
+        return child
+      })
+      
+      const intersects = raycaster.intersectObjects(objectsToTest, false)
+      
       const clickedMesh = intersects.find(
         (obj) => obj.object instanceof THREE.Mesh && 
         !obj.object.userData.isBackground
@@ -264,45 +331,40 @@ function Scene() {
       lastPosition.current = { x: e.clientX, y: e.clientY }
       
       if (activeCube.current) {
-        // Rotate the cube
-        activeCube.current.rotation.y += deltaX
-        activeCube.current.rotation.x += deltaY
+        const index = activeCube.current.userData.index
+        const basePosition = activeCube.current.position
+        handleImageRotation(index, deltaX, deltaY, basePosition)
       } else {
-        // Rotate the scene
         scene.rotation.y += deltaX
         scene.rotation.x += deltaY
+        wasRotating.current = true
+        allowImageInteraction.current = false
       }
     }
     
     const handlePointerUp = () => {
+      if (wasRotating.current) {
+        setTimeout(() => {
+          wasRotating.current = false
+        }, 100)
+      }
       isDragging.current = false
       activeCube.current = null
     }
     
-    // Handle zoom with mouse wheel
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault()
-      
-      // Determine zoom direction and speed
       const zoomSpeed = 0.1
       const delta = e.deltaY > 0 ? 1 : -1
-      
-      // Update camera position (zoom in/out)
       camera.position.z += delta * zoomSpeed
-      
-      // Clamp to reasonable zoom limits
-      camera.position.z = Math.max(2, Math.min(10, camera.position.z))
+      camera.position.z = Math.max(-5, Math.min(10, camera.position.z))
     }
     
-    // Add event listeners to the window to capture events outside the canvas
     window.addEventListener('pointerdown', handlePointerDown)
     window.addEventListener('pointermove', handlePointerMove)
     window.addEventListener('pointerup', handlePointerUp)
-    
-    // Add wheel event to the canvas for zoom
     canvas.addEventListener('wheel', handleWheel, { passive: false })
     
-    // Clean up event listeners on unmount
     return () => {
       window.removeEventListener('pointerdown', handlePointerDown)
       window.removeEventListener('pointermove', handlePointerMove)
@@ -311,26 +373,42 @@ function Scene() {
     }
   }, [scene, camera, gl])
   
+  const imagePaths = [
+    '/assets/first.png',
+    '/assets/next.png',
+    '/assets/then.png',
+    '/assets/and.png',
+    '/assets/fin.png',
+  ]
+
   return (
     <>
-      {/* Transparent background plane for rotation support */}
       <mesh userData={{ isBackground: true }} position={[0, 0, -10]} scale={[100, 100, 1]}>
         <planeGeometry />
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
 
       <ResponsiveImageStrip
-        imagePaths={[
-          '/assets/first.png',
-          '/assets/next.png',
-          '/assets/then.png',
-          '/assets/and.png',
-          '/assets/fin.png',
-        ]}
+        imagePaths={imagePaths}
+        allowInteraction={allowImageInteraction.current}
+        wasRotating={wasRotating.current}
+        zPosition={0}
+        imageStates={imageStates}
+        onRotate={handleImageRotation}
+        isBackLayer={false}
+      />
+
+      <ResponsiveImageStrip
+        imagePaths={imagePaths}
+        allowInteraction={false}
+        wasRotating={wasRotating.current}
+        zPosition={-1}
+        imageStates={imageStates}
+        isBackLayer={true}
       />
 
       <ambientLight intensity={4} />
-      <pointLight position={[0, 0, 0]} />
+      <pointLight position={[0, 0, 5]} />
     </>
   )
 }
