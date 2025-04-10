@@ -19,7 +19,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
         />
         <Meta />
-        {/* <Links /> */}
+        <Links />
       </head>
       <body>
         {children}
