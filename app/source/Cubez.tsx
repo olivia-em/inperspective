@@ -83,7 +83,7 @@ export function ResponsiveImageStrip({
       // Re-enable interaction after a delay
       interactionTimer.current = setTimeout(() => {
         interactionEnabled.current = true;
-      }, 300);
+      }, 1000);
     } else {
       // Always ensure interaction is enabled when not rotating
       interactionEnabled.current = true;
@@ -285,10 +285,10 @@ export function ResponsiveImageStrip({
               side={THREE.DoubleSide}
               alphaTest={0.01}
               depthWrite={false}
-              // blending={THREE.CustomBlending}
-              // blendEquation={THREE.AddEquation}
-              // blendSrc={THREE.OneMinusDstColorFactor}
-              // blendDst={THREE.OneMinusSrcColorFactor}
+              blending={THREE.CustomBlending}
+              blendEquation={THREE.AddEquation}
+              blendSrc={THREE.OneMinusDstColorFactor}
+              blendDst={THREE.OneMinusSrcColorFactor}
             />
           </mesh>
         )
@@ -553,6 +553,7 @@ function Scene() {
         onRotate={handleImageRotation}
         wasRotating={wasRotatingState}
         isBackLayer={false}
+
       />
 
       <ResponsiveImageStrip
