@@ -15,3 +15,8 @@ body {
   background: #f0f0f0;
   color: #000000;
 }
+
+canvas {
+  width: 100vw;
+  height: 100vh;
+}
