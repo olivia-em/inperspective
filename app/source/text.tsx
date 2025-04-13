@@ -2,42 +2,114 @@ import React, { useRef, useState, useEffect } from 'react'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
-interface ImageState {
+interface TextState {
   rotation: THREE.Euler
   position: THREE.Vector3
   isActive: boolean
 }
 
-interface ImageData {
-  texture: THREE.Texture
-  aspectRatio: number
+interface TextData {
+  text: string
+  width: number
+  height: number
 }
 
-interface ResponsiveImageStripProps {
-  imagePaths: string[]
+interface ResponsiveTextStripProps {
+  textContents: string[]
   maxSize?: number 
   verticalOffset?: number
   wasRotating: boolean 
   allowInteraction?: boolean
   zPosition?: number
-  imageStates: ImageState[]
+  textStates: TextState[]
   onRotate?: (index: number, deltaX: number, deltaY: number) => void
   isBackLayer: boolean
+  textColor?: string
+  backgroundColor?: string
+  fontSize?: number
 }
 
-export function ResponsiveImageStrip({ 
-  imagePaths, 
+const createTextTexture = (
+    text: string, 
+    fontSize = 12, 
+    color = '#000000', 
+    bgColor = 'rgb(0,0,0)',
+    maxWidth = 200 // Add maxWidth parameter
+  ) => {
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+  
+    // Set font for measurements
+    ctx.font = `${fontSize}px Arial, sans-serif`
+    
+    // Calculate wrapped text
+    const words = text.split(' ')
+    const lines: string[] = []
+    let currentLine = words[0]
+  
+    for (let i = 1; i < words.length; i++) {
+      const testLine = currentLine + ' ' + words[i]
+      const metrics = ctx.measureText(testLine)
+      
+      if (metrics.width > maxWidth) {
+        lines.push(currentLine)
+        currentLine = words[i]
+      } else {
+        currentLine = testLine
+      }
+    }
+    lines.push(currentLine)
+  
+    // Calculate dimensions with padding
+    const padding = fontSize * 0.5
+    const lineHeight = fontSize * 1.2
+    const width = Math.ceil(maxWidth + padding * 2)
+    const height = Math.ceil(lineHeight * lines.length + padding * 2)
+    
+    // Set canvas dimensions
+    canvas.width = width
+    canvas.height = height
+    
+    // Redraw with final dimensions
+    ctx.font = `${fontSize}px Arial, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    
+    // Draw each line
+    lines.forEach((line, i) => {
+      const y = padding + (i * lineHeight) + lineHeight / 2
+      ctx.fillText(line, width / 2, y)
+    })
+    
+    // Create texture
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.needsUpdate = true
+    
+    return {
+      texture,
+      aspectRatio: width / height,
+      width,
+      height
+    }
+  }
+  
+export function ResponsiveTextStrip({ 
+  textContents, 
   maxSize = 4,
   verticalOffset = 0,
   allowInteraction = true,
   wasRotating = false,
   zPosition = 0,
-  imageStates,
+  textStates,
   onRotate,
-  isBackLayer
-}: ResponsiveImageStripProps) {
+  isBackLayer,
+  textColor = '#ffffff',
+  backgroundColor = 'rgba(0,0,0,0.7)',
+  fontSize = 24
+}: ResponsiveTextStripProps) {
   const groupRef = useRef<THREE.Group>(null)
-  const [images, setImages] = useState<ImageData[]>([])
+  const [texts, setTexts] = useState<TextData[]>([])
   const { viewport, camera } = useThree()
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null)
   
@@ -48,28 +120,21 @@ export function ResponsiveImageStrip({
   const interactionEnabled = useRef(true)
   const interactionTimer = useRef<NodeJS.Timeout | null>(null)
 
-  // Load images and compute aspect ratios
+  // Create text textures
   useEffect(() => {
-    const loader = new THREE.TextureLoader()
-    Promise.all(
-      imagePaths.map(
-        path =>
-          new Promise<ImageData>((resolve) => {
-            loader.load(path, (tex) => {
-              // Force proper texture parameters for PNG transparency
-              tex.premultiplyAlpha = true;
-              tex.needsUpdate = true;
-              tex.generateMipmaps = true;
-              tex.minFilter = THREE.LinearMipmapLinearFilter;
-              tex.magFilter = THREE.LinearFilter;
-              
-              const ratio = tex.image.width / tex.image.height
-              resolve({ texture: tex, aspectRatio: ratio })
-            })
-          })
-      )
-    ).then(setImages)
-  }, [imagePaths])
+    const textData = textContents.map(text => {
+      const result = createTextTexture(text, fontSize, textColor, backgroundColor)
+      if (!result) {
+        return { text, width: 2, height: 1 }
+      }
+      return { 
+        text,
+        width: result.width / 100, // Scale down canvas dimensions
+        height: result.height / 100
+      }
+    })
+    setTexts(textData)
+  }, [textContents, fontSize, textColor, backgroundColor])
   
   // Update interaction state based on wasRotating prop
   useEffect(() => {
@@ -117,10 +182,10 @@ export function ResponsiveImageStrip({
     }
   })
 
-  // Function to handle image click
-  const handleImageClick = (index: number, position: THREE.Vector3, isBack: boolean) => {
+  // Function to handle text panel click
+  const handleTextClick = (index: number, position: THREE.Vector3, isBack: boolean) => {
     // Debug console to verify click is registered
-    console.log("Image clicked:", index, "interaction enabled:", interactionEnabled.current);
+    console.log("Text panel clicked:", index, "interaction enabled:", interactionEnabled.current);
     
     if (!interactionEnabled.current) {
       console.log("Interaction disabled, ignoring click");
@@ -171,11 +236,11 @@ export function ResponsiveImageStrip({
     return () => window.removeEventListener('pointerdown', handlePointerDown)
   }, [focusedIndex, camera, isBackLayer]);
 
-  if (images.length === 0) return null
+  if (texts.length === 0) return null
 
   const isLandscape = viewport.width > viewport.height
   const spacing = isLandscape ? 0.7 : 0.4  // Different spacing based on orientation
-  const total = images.length
+  const total = texts.length
 
   // Fixed axis size (width in landscape, height in portrait)
   const availableSpace = isLandscape
@@ -185,18 +250,18 @@ export function ResponsiveImageStrip({
   // Calculate fixed width that will be used in both modes
   const baseWidth = (availableSpace - (total - 1) * spacing) / total
 
-  // For top alignment in landscape mode, find the tallest image
-  const maxHeight = Math.max(...images.map(img => baseWidth / img.aspectRatio));
+  // For top alignment in landscape mode, find the tallest text panel
+  const maxHeight = Math.max(...texts.map(text => baseWidth / 2)); // Assuming 2:1 aspect ratio
 
   // Pre-compute all heights for portrait positioning
-  const heights = images.map(img => baseWidth / img.aspectRatio);
+  const heights = texts.map(text => baseWidth / 2); // Assuming 2:1 aspect ratio
 
   return (
     <group ref={groupRef} position={[0, verticalOffset, zPosition]}>
-      {images.map(({ texture, aspectRatio }, i) => {
-        // Always use fixed width
+      {texts.map((textData, i) => {
+        // Use fixed width and height for text panels
         const width = baseWidth;
-        const height = width / aspectRatio;
+        const height = width / 2; // Assuming 2:1 aspect ratio for text panels
 
         // Position calculation
         let xPos = 0;
@@ -206,27 +271,27 @@ export function ResponsiveImageStrip({
           // Horizontal layout - center horizontally
           xPos = (i - total / 2 + 0.5) * (width + spacing);
           
-          // Top alignment - align all tops with the tallest image
+          // Top alignment - align all tops with the tallest panel
           yPos = (maxHeight - height) / 2;
         } else {
           // Vertical layout - center horizontally
           xPos = 0;
           
-          // Calculate position based on the heights of all previous images
+          // Calculate position based on the heights of all previous panels
           let offset = 0;
           
-          // Calculate total height of all images plus spacing
+          // Calculate total height of all panels plus spacing
           const totalHeight = heights.reduce((sum, h) => sum + h, 0) + (total - 1) * spacing;
           
           // Position starting from top
           offset = totalHeight / 2; // Start from the top edge
           
-          // Subtract heights of all previous images and their spacing
+          // Subtract heights of all previous panels and their spacing
           for (let j = 0; j < i; j++) {
             offset -= heights[j] + spacing;
           }
           
-          // Adjust by half the current image height to position correctly
+          // Adjust by half the current panel height to position correctly
           offset -= height / 2;
           
           yPos = offset;
@@ -237,11 +302,9 @@ export function ResponsiveImageStrip({
         if (isBackLayer) {
           // Ellipse dimensions (adjust to wrap around the front layer)
           const ellipseWidth = availableSpace * 2.5
-         const ellipseHeight = maxHeight * 15
-       // const windowHeight = viewport.height
-       // const ellipseHeight = windowHeight * 2 
+          const ellipseHeight = maxHeight * 15
           
-          // Add rotation offset to shift starting position (adjust this value to rotate more/less)
+          // Add rotation offset to shift starting position
           const rotationOffset = Math.PI * 0.5 // Shifts by 90 degrees
           
           const angle = (i / total) * Math.PI * 2 + rotationOffset
@@ -257,16 +320,24 @@ export function ResponsiveImageStrip({
           position = new THREE.Vector3(xPos, yPos, zPosition)
         }
 
-        // Scale effect for the focused image
+        // Scale effect for the focused panel
         const scale = isBackLayer ? 
           (focusedIndex === i ? 4 : 4) : // Larger scale for back layer
           (focusedIndex === i ? 1.1 : 1.0);   // Original scale for front layer
+
+        // Create text texture for this panel
+        const textRender = createTextTexture(
+          textData.text, 
+          fontSize, 
+          textColor, 
+          backgroundColor
+        )
       
         return (
           <mesh 
             key={i} 
             position={position}
-            rotation={isBackLayer ? new THREE.Euler(0, 0, 0) : imageStates[i].rotation}
+            rotation={isBackLayer ? new THREE.Euler(0, 0, 0) : textStates[i].rotation}
             scale={[scale, scale, scale]}
             userData={{ 
               index: i, 
@@ -275,23 +346,33 @@ export function ResponsiveImageStrip({
             }}
             onClick={(e) => {
               e.stopPropagation();
-              console.log(`Click on image ${i}, layer: ${isBackLayer ? 'back' : 'front'}`);
+              console.log(`Click on text panel ${i}, layer: ${isBackLayer ? 'back' : 'front'}`);
               const basePosition = e.object.userData.basePosition;
-              handleImageClick(i, basePosition, isBackLayer);
+              handleTextClick(i, basePosition, isBackLayer);
             }}
           >
             <planeGeometry args={[width, height]} />
-            <meshBasicMaterial 
-              map={texture} 
-              transparent={true}
-              side={THREE.DoubleSide}
-              alphaTest={0.01}
-              depthWrite={false}
-              blending={THREE.CustomBlending}
-              blendEquation={THREE.AddEquation}
-              blendSrc={THREE.OneMinusDstColorFactor}
-              blendDst={THREE.OneMinusSrcColorFactor}
-            />
+            {textRender ? (
+              <meshBasicMaterial 
+                map={textRender.texture} 
+                transparent={true}
+                side={THREE.DoubleSide}
+                alphaTest={0.01}
+                depthWrite={false}
+                blending={THREE.CustomBlending}
+                blendEquation={THREE.AddEquation}
+                blendSrc={THREE.OneMinusDstColorFactor}
+                blendDst={THREE.OneMinusSrcColorFactor}
+              />
+            ) : (
+              <meshBasicMaterial 
+                color={backgroundColor} 
+                transparent={true}
+                side={THREE.DoubleSide}
+              >
+                {/* Fallback if texture creation fails */}
+              </meshBasicMaterial>
+            )}
           </mesh>
         )
       })}
@@ -307,32 +388,32 @@ function Scene() {
   const lastPosition = useRef({ x: 0, y: 0 })
   const dragStartTime = useRef(0)
   const dragDistance = useRef({ x: 0, y: 0 })
-  const activeCube = useRef<THREE.Mesh | null>(null)
-  const allowImageInteraction = useRef(true)
+  const activePanel = useRef<THREE.Mesh | null>(null)
+  const allowTextInteraction = useRef(true)
   const interactionResetTimer = useRef<NodeJS.Timeout | null>(null)
 
-  // Move imagePaths declaration before it's used
-  const imagePaths = [
-    '/assets/first.png',
-    '/assets/next.png',
-    '/assets/then.png',
-    '/assets/and.png',
-    '/assets/fin.png',
+  // Define text content instead of image paths
+  const frontTextContents = [
+    'First Step',
+    'Next Phase',
+    'Then Continue',
+    'And Finally',
+    'The End'
   ]
 
-  const backImagePaths = [
-    '/assets/first-sub.png',
-    '/assets/next-sub.png',
-    '/assets/then-sub.png',
-    '/assets/and-sub.png',
-    '/assets/fin-sub.png',
+  const backTextContents = [
+    'Details about first step hello hello',
+    'Details about next phase',
+    'Details about continuation',
+    'Details about final stage',
+    'Summary and conclusion'
   ]
 
-  const pentagonOrder = [2, 0, 1, 3, 4] // your custom order for 5 images
-  const backLayerImagePaths = pentagonOrder.map(i => backImagePaths[i])
+  const pentagonOrder = [2, 0, 1, 3, 4] // your custom order for 5 panels
+  const backLayerTextContents = pentagonOrder.map(i => backTextContents[i])
 
-  // Add image states
-  const [imageStates, setImageStates] = useState<ImageState[]>(() => 
+  // Add text panel states
+  const [textStates, setTextStates] = useState<TextState[]>(() => 
     Array(5).fill(null).map(() => ({
       rotation: new THREE.Euler(0, 0, 0),
       position: new THREE.Vector3(0, 0, 0),
@@ -340,7 +421,7 @@ function Scene() {
     }))
   )
 
-  const backLayerStates = pentagonOrder.map(i => imageStates[i])
+  const backLayerStates = pentagonOrder.map(i => textStates[i])
   const getBackPosition = (rotation: THREE.Euler, basePosition: THREE.Vector3) => {
     const maxOffset = 3 // Increased from 0.5 for more dramatic movement
     return new THREE.Vector3(
@@ -362,7 +443,7 @@ function Scene() {
       interactionResetTimer.current = setTimeout(() => {
         setWasRotatingState(false);
         wasRotating.current = false;
-        allowImageInteraction.current = true;
+        allowTextInteraction.current = true;
         console.log("Rotation state reset, interactions enabled");
       }, 300);
     }
@@ -374,8 +455,8 @@ function Scene() {
     };
   }, [wasRotatingState]);
 
-  const handleImageRotation = (index: number, deltaX: number, deltaY: number, basePosition: THREE.Vector3) => {
-    setImageStates(prev => prev.map((state, i) => {
+  const handleTextRotation = (index: number, deltaX: number, deltaY: number, basePosition: THREE.Vector3) => {
+    setTextStates(prev => prev.map((state, i) => {
       if (i === index) {
         const newRotation = new THREE.Euler(
           state.rotation.x + deltaY,
@@ -425,12 +506,12 @@ function Scene() {
       )
       
       if (clickedMesh && clickedMesh.object instanceof THREE.Mesh) {
-        activeCube.current = clickedMesh.object
-        // If we clicked on an image, this is not scene rotation
+        activePanel.current = clickedMesh.object
+        // If we clicked on a text panel, this is not scene rotation
         wasRotating.current = false
         setWasRotatingState(false)
       } else {
-        activeCube.current = null
+        activePanel.current = null
       }
     }
     
@@ -446,11 +527,11 @@ function Scene() {
       
       lastPosition.current = { x: e.clientX, y: e.clientY }
       
-      if (activeCube.current) {
-        const index = activeCube.current.userData.index
-        const basePosition = activeCube.current.position
-        if (activeCube.current?.userData.layer !== 'front') return;
-        handleImageRotation(index, deltaX, deltaY, basePosition)
+      if (activePanel.current) {
+        const index = activePanel.current.userData.index
+        const basePosition = activePanel.current.position
+        if (activePanel.current?.userData.layer !== 'front') return;
+        handleTextRotation(index, deltaX, deltaY, basePosition)
       } else {
         // Only rotate the scene if we've moved more than a minimum threshold
         if (dragDistance.current.x > 5 || dragDistance.current.y > 5) {
@@ -458,7 +539,7 @@ function Scene() {
           scene.rotation.x += deltaY
           wasRotating.current = true
           setWasRotatingState(true)
-          allowImageInteraction.current = false
+          allowTextInteraction.current = false
         }
       }
     }
@@ -478,12 +559,12 @@ function Scene() {
         // This was a clean click, always enable interaction for clicks
         wasRotating.current = false;
         setWasRotatingState(false);
-        allowImageInteraction.current = true;
+        allowTextInteraction.current = true;
         console.log("Clean click detected, enabling interactions");
       }
       
       isDragging.current = false
-      activeCube.current = null
+      activePanel.current = null
     }
     
     // Force enable interaction when user does a click with no drag
@@ -491,7 +572,7 @@ function Scene() {
       if (!wasRotating.current && dragDistance.current.x < 5 && dragDistance.current.y < 5) {
         wasRotating.current = false;
         setWasRotatingState(false);
-        allowImageInteraction.current = true;
+        allowTextInteraction.current = true;
         console.log("Click detected, enabling interactions");
       }
     }
@@ -512,7 +593,7 @@ function Scene() {
       scene.rotation.set(0, 0, 0)
       wasRotating.current = false
       setWasRotatingState(false)
-      allowImageInteraction.current = true
+      allowTextInteraction.current = true
       console.log("Double-click detected, resetting scene and enabling interactions");
     }
     
@@ -547,24 +628,29 @@ function Scene() {
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
 
-      <ResponsiveImageStrip
-        imagePaths={imagePaths}
-        allowInteraction={allowImageInteraction.current}
+      <ResponsiveTextStrip
+        textContents={frontTextContents}
+        allowInteraction={allowTextInteraction.current}
         zPosition={0}
-        imageStates={imageStates}
-        onRotate={handleImageRotation}
+        textStates={textStates}
+        onRotate={handleTextRotation}
         wasRotating={wasRotatingState}
         isBackLayer={false}
-
+        textColor="#ffffff"
+        backgroundColor="rgba(30,30,30,0.8)"
+        fontSize={32}
       />
 
-      <ResponsiveImageStrip
-        imagePaths={backLayerImagePaths} 
-        allowInteraction={allowImageInteraction.current}
+      <ResponsiveTextStrip
+        textContents={backLayerTextContents} 
+        allowInteraction={allowTextInteraction.current}
         wasRotating={wasRotatingState}
         zPosition={-2} 
-        imageStates={backLayerStates}
+        textStates={backLayerStates}
         isBackLayer={true}
+        textColor="#ccccff"
+        backgroundColor="rgba(10,10,40,0.7)"
+        fontSize={24}
       />
 
       <ambientLight intensity={4} />

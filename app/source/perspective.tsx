@@ -1,6 +1,12 @@
 import React, { useRef, useState, useEffect } from 'react'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader'
+import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry'
+import { extend } from '@react-three/fiber'
+
+// Extend TextGeometry so it's available in JSX
+extend({ TextGeometry })
 
 interface ImageState {
   rotation: THREE.Euler
@@ -23,6 +29,17 @@ interface ResponsiveImageStripProps {
   imageStates: ImageState[]
   onRotate?: (index: number, deltaX: number, deltaY: number) => void
   isBackLayer: boolean
+}
+
+// New interface for text layer props
+interface TextBackLayerProps {
+  textContents: string[]
+  pentagonOrder: number[]
+  imageStates: ImageState[]
+  zPosition?: number
+  verticalOffset?: number
+  wasRotating: boolean
+  allowInteraction?: boolean
 }
 
 export function ResponsiveImageStrip({ 
@@ -237,9 +254,7 @@ export function ResponsiveImageStrip({
         if (isBackLayer) {
           // Ellipse dimensions (adjust to wrap around the front layer)
           const ellipseWidth = availableSpace * 2.5
-         const ellipseHeight = maxHeight * 15
-       // const windowHeight = viewport.height
-       // const ellipseHeight = windowHeight * 2 
+          const ellipseHeight = maxHeight * 15
           
           // Add rotation offset to shift starting position (adjust this value to rotate more/less)
           const rotationOffset = Math.PI * 0.5 // Shifts by 90 degrees
@@ -299,6 +314,255 @@ export function ResponsiveImageStrip({
   )
 }
 
+// Properly modified Text Back Layer with font loading
+function TextBackLayer({
+  textContents,
+  pentagonOrder,
+  imageStates,
+  zPosition = -2,
+  verticalOffset = 0,
+  wasRotating = false,
+  allowInteraction = true
+}: TextBackLayerProps) {
+  const groupRef = useRef<THREE.Group>(null)
+  const { viewport, camera } = useThree()
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null)
+  const [font, setFont] = useState<THREE.Font | null>(null)
+  
+  // Animation properties
+  const targetPosition = useRef(new THREE.Vector3(0, 0, 0))
+  const targetZoom = useRef(5)
+  const animating = useRef(false)
+  const interactionEnabled = useRef(true)
+  const interactionTimer = useRef<NodeJS.Timeout | null>(null)
+  
+  // Load the font
+  useEffect(() => {
+    const fontLoader = new FontLoader();
+    fontLoader.load(
+      'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
+      (loadedFont) => {
+        console.log("Font loaded successfully");
+        setFont(loadedFont);
+      },
+      // onProgress callback
+      (xhr) => {
+        console.log((xhr.loaded / xhr.total * 100) + '% of font loaded');
+      },
+      // onError callback
+      (err) => {
+        console.error('An error happened while loading the font:', err);
+      }
+    );
+  }, []);
+  
+  // Update interaction state based on wasRotating prop
+  useEffect(() => {
+    if (interactionTimer.current) {
+      clearTimeout(interactionTimer.current)
+    }
+    
+    if (wasRotating) {
+      interactionEnabled.current = false;
+      interactionTimer.current = setTimeout(() => {
+        interactionEnabled.current = true;
+      }, 1000);
+    } else {
+      interactionEnabled.current = true;
+    }
+    
+    return () => {
+      if (interactionTimer.current) {
+        clearTimeout(interactionTimer.current);
+      }
+    };
+  }, [wasRotating]);
+  
+  // Handle animation of camera position
+  useFrame(() => {
+    if (animating.current) {
+      camera.position.lerp(new THREE.Vector3(
+        targetPosition.current.x,
+        targetPosition.current.y,
+        targetZoom.current
+      ), 0.1)
+      
+      if (camera.position.distanceTo(new THREE.Vector3(
+        targetPosition.current.x,
+        targetPosition.current.y,
+        targetZoom.current
+      )) < 0.01) {
+        animating.current = false
+      }
+    }
+  })
+
+  // Function to handle text click
+  const handleTextClick = (index: number, position: THREE.Vector3) => {
+    console.log("Text clicked:", index, "interaction enabled:", interactionEnabled.current);
+    
+    if (!interactionEnabled.current) {
+      console.log("Interaction disabled, ignoring click");
+      return;
+    }
+
+    if (focusedIndex === index) {
+      targetPosition.current.set(0, 0, 0)
+      targetZoom.current = 8
+      setFocusedIndex(null)
+    } else {
+      targetPosition.current.copy(position)
+      targetZoom.current = 6
+      setFocusedIndex(index)
+    }
+    animating.current = true
+  }
+
+  const total = textContents.length
+  const isLandscape = viewport.width > viewport.height
+  const availableSpace = isLandscape ? viewport.width * 0.9 : viewport.height * 0.7
+
+  // If font is not loaded yet, show loading placeholder or return null
+  if (!font) {
+    return (
+      <group position={[0, 0, zPosition]}>
+        <mesh>
+          <boxGeometry args={[1, 1, 1]} />
+          <meshStandardMaterial color="gray" />
+        </mesh>
+        <Html position={[0, 2, 0]} center>
+          <div style={{ color: 'white', background: 'rgba(0,0,0,0.5)', padding: '10px' }}>
+            Loading fonts...
+          </div>
+        </Html>
+      </group>
+    );
+  }
+
+  return (
+    <group ref={groupRef} position={[0, verticalOffset, zPosition]}>
+      {textContents.map((text, i) => {
+        // Find which front image controls this text using pentagonOrder
+        const correspondingFrontIndex = pentagonOrder.indexOf(i)
+        
+        // Get the rotation from the corresponding front image
+        const frontRotation = imageStates[correspondingFrontIndex]?.rotation || new THREE.Euler(0, 0, 0)
+        
+        // Ellipse dimensions for pentagon layout
+        const ellipseWidth = availableSpace * 2.5
+        const ellipseHeight = isLandscape ? availableSpace * 2 : availableSpace * 3
+        
+        // Position on pentagon (ellipse)
+        const rotationOffset = Math.PI * 0.5
+        const angle = (i / total) * Math.PI * 2 + rotationOffset
+        
+        const position = new THREE.Vector3(
+          Math.cos(angle) * (ellipseWidth / 2),
+          Math.sin(angle) * (ellipseHeight / 2),
+          zPosition
+        )
+        
+        // Apply dynamic effects based on the corresponding front image rotation
+        const rotationMagnitude = Math.abs(frontRotation.x) + Math.abs(frontRotation.y)
+        
+        // Scale effect increases with rotation
+        const baseScale = 0.5
+        const scaleMultiplier = 1 + rotationMagnitude * 2
+        const scale = baseScale * scaleMultiplier
+        
+        // Color effect changes with rotation
+        const hue = (0.5 + Math.sin(frontRotation.x) * 0.5) * 360
+        const saturation = 0.7 + Math.sin(frontRotation.y) * 0.3
+        const color = new THREE.Color().setHSL(hue/360, saturation, 0.6)
+        
+        // Calculate dynamic text size based on rotation
+        const textSize = 0.2 + rotationMagnitude * 0.3
+        
+        // Use 3D Text geometry with the loaded font
+        return (
+          <group 
+            key={i}
+            position={position}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleTextClick(i, position);
+            }}
+            userData={{ index: i }}
+          >
+            {/* Use actual 3D text geometry with properly loaded font */}
+            <mesh
+              rotation={new THREE.Euler(
+                frontRotation.x * 1.5, // Amplify rotation effect
+                frontRotation.y * 1.5,
+                0
+              )}
+              scale={[scale, scale, scale]}
+            >
+              <textGeometry 
+                args={[
+                  text, 
+                  {
+                    font: font,
+                    size: textSize,
+                    height: 0.05 + rotationMagnitude * 0.1,
+                    curveSegments: 12,
+                    bevelEnabled: true,
+                    bevelThickness: 0.01,
+                    bevelSize: 0.01,
+                    bevelOffset: 0,
+                    bevelSegments: 5
+                  }
+                ]} 
+              />
+              <meshStandardMaterial 
+                color={color}
+                metalness={0.5 + rotationMagnitude * 0.5}
+                roughness={0.5 - rotationMagnitude * 0.3}
+                emissive={color}
+                emissiveIntensity={rotationMagnitude * 0.7}
+              />
+            </mesh>
+            
+            {/* Fallback HTML text overlay (optional) */}
+            <Html
+              position={[0, 0, 0.1]}
+              transform
+              occlude
+              center
+              style={{
+                fontSize: `${textSize * 100}px`,
+                color: `hsl(${hue}, ${saturation*100}%, 60%)`,
+                opacity: rotationMagnitude > 0.1 ? 1 : 0.7, // Fade when not rotating
+                fontWeight: 'bold',
+                textShadow: `0 0 ${rotationMagnitude * 10}px rgba(255,255,255,0.7)`,
+                transform: `scale(${scale})`,
+                transition: 'all 0.3s ease',
+                pointerEvents: 'none' // Let clicks go through to the parent
+              }}
+            >
+              {text}
+            </Html>
+          </group>
+        )
+      })}
+    </group>
+  )
+}
+
+// Fix the missing Html component
+function Html({ position, transform, occlude, center, style, children }: any) {
+  // This is a simplified version - normally you'd use @react-three/drei's Html
+  return (
+    <mesh position={position}>
+      <planeGeometry args={[1, 1]} />
+      <meshBasicMaterial transparent opacity={0} />
+      <sprite scale={[2, 1, 1]}>
+        <spriteMaterial transparent opacity={0} />
+      </sprite>
+    </mesh>
+  )
+}
+
 function Scene() {
   const { scene, camera, gl } = useThree()
   const isDragging = useRef(false)
@@ -311,7 +575,7 @@ function Scene() {
   const allowImageInteraction = useRef(true)
   const interactionResetTimer = useRef<NodeJS.Timeout | null>(null)
 
-  // Move imagePaths declaration before it's used
+  // Front layer image paths
   const imagePaths = [
     '/assets/first.png',
     '/assets/next.png',
@@ -320,16 +584,16 @@ function Scene() {
     '/assets/fin.png',
   ]
 
-  const backImagePaths = [
-    '/assets/first-sub.png',
-    '/assets/next-sub.png',
-    '/assets/then-sub.png',
-    '/assets/and-sub.png',
-    '/assets/fin-sub.png',
+  // Text contents to replace back layer PNGs
+  const textContents = [
+    "BEGINNING",
+    "JOURNEY",
+    "EXPLORATION",
+    "DISCOVERY",
+    "CONCLUSION"
   ]
 
-  const pentagonOrder = [2, 0, 1, 3, 4] // your custom order for 5 images
-  const backLayerImagePaths = pentagonOrder.map(i => backImagePaths[i])
+  const pentagonOrder = [2, 0, 1, 3, 4] // Custom order for 5 images/texts
 
   // Add image states
   const [imageStates, setImageStates] = useState<ImageState[]>(() => 
@@ -340,25 +604,13 @@ function Scene() {
     }))
   )
 
-  const backLayerStates = pentagonOrder.map(i => imageStates[i])
-  const getBackPosition = (rotation: THREE.Euler, basePosition: THREE.Vector3) => {
-    const maxOffset = 3 // Increased from 0.5 for more dramatic movement
-    return new THREE.Vector3(
-      basePosition.x + Math.sin(rotation.y) * maxOffset,
-      basePosition.y + Math.sin(rotation.x) * maxOffset,
-      -1
-    )
-  }
-  
   // Reset wasRotating state and ensure interaction is enabled after rotation
   useEffect(() => {
-    // Clear any existing timer to prevent multiple timers
     if (interactionResetTimer.current) {
       clearTimeout(interactionResetTimer.current);
     }
     
     if (wasRotatingState) {
-      // Set a timer to reset the rotation state
       interactionResetTimer.current = setTimeout(() => {
         setWasRotatingState(false);
         wasRotating.current = false;
@@ -385,7 +637,11 @@ function Scene() {
         return {
           ...state,
           rotation: newRotation,
-          position: getBackPosition(newRotation, basePosition)
+          position: new THREE.Vector3(
+            basePosition.x + Math.sin(newRotation.y) * 3,
+            basePosition.y + Math.sin(newRotation.x) * 3,
+            -1
+          )
         }
       }
       return state
@@ -426,7 +682,6 @@ function Scene() {
       
       if (clickedMesh && clickedMesh.object instanceof THREE.Mesh) {
         activeCube.current = clickedMesh.object
-        // If we clicked on an image, this is not scene rotation
         wasRotating.current = false
         setWasRotatingState(false)
       } else {
@@ -440,7 +695,6 @@ function Scene() {
       const deltaX = (e.clientX - lastPosition.current.x) * 0.01
       const deltaY = (e.clientY - lastPosition.current.y) * 0.01
       
-      // Update drag distance for click vs. drag detection
       dragDistance.current.x += Math.abs(e.clientX - lastPosition.current.x)
       dragDistance.current.y += Math.abs(e.clientY - lastPosition.current.y)
       
@@ -452,7 +706,6 @@ function Scene() {
         if (activeCube.current?.userData.layer !== 'front') return;
         handleImageRotation(index, deltaX, deltaY, basePosition)
       } else {
-        // Only rotate the scene if we've moved more than a minimum threshold
         if (dragDistance.current.x > 5 || dragDistance.current.y > 5) {
           scene.rotation.y += deltaX
           scene.rotation.x += deltaY
@@ -467,7 +720,6 @@ function Scene() {
       const dragDuration = Date.now() - dragStartTime.current
       const dragTotalDistance = dragDistance.current.x + dragDistance.current.y
       
-      // Consider it a click only if drag was short in time and distance
       const isClick = dragDuration < 200 && dragTotalDistance < 10
       
       if (!isClick && wasRotating.current) {
@@ -475,7 +727,6 @@ function Scene() {
         setWasRotatingState(true)
         console.log("Finished rotating scene, temporarily disabling interactions");
       } else if (isClick) {
-        // This was a clean click, always enable interaction for clicks
         wasRotating.current = false;
         setWasRotatingState(false);
         allowImageInteraction.current = true;
@@ -486,7 +737,6 @@ function Scene() {
       activeCube.current = null
     }
     
-    // Force enable interaction when user does a click with no drag
     const handleClick = (e: MouseEvent) => {
       if (!wasRotating.current && dragDistance.current.x < 5 && dragDistance.current.y < 5) {
         wasRotating.current = false;
@@ -498,7 +748,6 @@ function Scene() {
     
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault()
-      // Only allow zoom if not rotating
       if (!wasRotating.current) {
         const zoomSpeed = 0.1
         const delta = e.deltaY > 0 ? 1 : -1
@@ -507,7 +756,6 @@ function Scene() {
       }
     }
     
-    // Double-click to reset rotation and interaction state
     const handleDoubleClick = () => {
       scene.rotation.set(0, 0, 0)
       wasRotating.current = false
@@ -547,6 +795,7 @@ function Scene() {
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
 
+      {/* Front layer with images */}
       <ResponsiveImageStrip
         imagePaths={imagePaths}
         allowInteraction={allowImageInteraction.current}
@@ -555,16 +804,16 @@ function Scene() {
         onRotate={handleImageRotation}
         wasRotating={wasRotatingState}
         isBackLayer={false}
-
       />
 
-      <ResponsiveImageStrip
-        imagePaths={backLayerImagePaths} 
-        allowInteraction={allowImageInteraction.current}
+      {/* Back layer with text instead of images */}
+      <TextBackLayer
+        textContents={textContents}
+        pentagonOrder={pentagonOrder}
+        imageStates={imageStates}
+        zPosition={-2}
         wasRotating={wasRotatingState}
-        zPosition={-2} 
-        imageStates={backLayerStates}
-        isBackLayer={true}
+        allowInteraction={allowImageInteraction.current}
       />
 
       <ambientLight intensity={4} />

@@ -13,8 +13,10 @@
     "@react-router/node": "^7.3.0",
     "@react-three/fiber": "^9.1.0",
     "isbot": "^5.1.17",
+    "p5": "^1.11.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-p5-wrapper": "^4.1.2",
     "react-router": "^7.3.0",
     "react-three-fiber": "^6.0.13",
     "three": "^0.174.0"
@@ -24,6 +26,7 @@
     "@react-router/dev": "^7.3.0",
     "@tailwindcss/vite": "^4.0.0",
     "@types/express": "^5.0.0",
+    "@types/p5": "^1.7.6",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.1",
     "@types/three": "^0.174.0",
