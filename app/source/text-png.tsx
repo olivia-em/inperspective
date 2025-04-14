@@ -497,48 +497,50 @@ const handleTextClick = (index: number, position: THREE.Vector3, isBack: boolean
     // Different reset zoom based on layer and orientation
     targetZoom.current = isLandscape
       ? (isBack ? 8 : 5)        // Landscape mode
-      : (isBack ? 12 : 7)       // Portrait mode - increased zoom out distance
+      : (isBack ? 11 : 10)       // Portrait mode - increased zoom out distance
     setFocusedIndex(null)
   } else {
     targetPosition.current.copy(position)
     // Different zoom levels for front/back and orientation
     targetZoom.current = isLandscape
       ? (isBack ? 6 : 3)        // Landscape mode
-      : (isBack ? 4 : 3)        // Portrait mode - decreased zoom in for better view
+      : (isBack ? 4 : 2)        // Portrait mode - decreased zoom in for better view
     setFocusedIndex(index)
   }
   animating.current = true
 }
   
     // Update click outside handler
-    useEffect(() => {
-      const handlePointerDown = (e: PointerEvent) => {
-        if (!interactionEnabled.current) return;
-        
-        if (focusedIndex !== null) {
-          const mouse = new THREE.Vector2(
-            (e.clientX / window.innerWidth) * 2 - 1, 
-            -(e.clientY / window.innerHeight) * 2 + 1
-          )
-          
-          const raycaster = new THREE.Raycaster()
-          raycaster.setFromCamera(mouse, camera)
-          
-          const intersects = raycaster.intersectObjects(groupRef.current?.children || [])
-          
-          if (intersects.length === 0) {
-            targetPosition.current.set(0, 0, 0)
-            // Different reset zoom based on layer
-            targetZoom.current = isBackLayer ? 10 : 5  // Back layer resets to max zoom out
-            setFocusedIndex(null)
-            animating.current = true
-          }
-        }
-      }
+   // In ResponsiveTextStrip component, update the handlePointerDown useEffect
+useEffect(() => {
+  const handlePointerDown = (e: PointerEvent) => {
+    if (!interactionEnabled.current) return;
+    
+    if (focusedIndex !== null) {
+      const mouse = new THREE.Vector2(
+        (e.clientX / window.innerWidth) * 2 - 1, 
+        -(e.clientY / window.innerHeight) * 2 + 1
+      )
       
-      window.addEventListener('pointerdown', handlePointerDown)
-      return () => window.removeEventListener('pointerdown', handlePointerDown)
-    }, [focusedIndex, camera, isBackLayer]);
+      const raycaster = new THREE.Raycaster()
+      raycaster.setFromCamera(mouse, camera)
+      
+      const intersects = raycaster.intersectObjects(groupRef.current?.children || [])
+      
+      if (intersects.length === 0) {
+        targetPosition.current.set(0, 0, 0)
+        // Different reset zoom based on layer and orientation
+        const isLandscape = viewport.width > viewport.height
+        targetZoom.current = isLandscape ? 10 : 5  // 10 for landscape, 5 for portrait
+        setFocusedIndex(null)
+        animating.current = true
+      }
+    }
+  }
+  
+  window.addEventListener('pointerdown', handlePointerDown)
+  return () => window.removeEventListener('pointerdown', handlePointerDown)
+}, [focusedIndex, camera, isBackLayer, viewport.width, viewport.height])
   
     if (texts.length === 0) return null
   
@@ -876,29 +878,29 @@ const handleMediaRotation = (index: number, deltaX: number, deltaY: number, base
       }
     }
         
-        const handlePointerUp = (e: PointerEvent) => {
-          const dragDuration = Date.now() - dragStartTime.current
-          const dragTotalDistance = dragDistance.current.x + dragDistance.current.y
-          
-          // Consider it a click only if drag was short in time and distance
-          const isClick = dragDuration < 200 && dragTotalDistance < 10
-          
-          if (!isClick && wasRotating.current) {
-            wasRotating.current = true
-            setWasRotatingState(true)
-            console.log("Finished rotating scene, temporarily disabling interactions");
-          } else if (isClick) {
-            // This was a clean click, always enable interaction for clicks
-            wasRotating.current = false;
-            setWasRotatingState(false);
-            allowInteraction.current = true;
-            console.log("Clean click detected, enabling interactions");
-          }
-          
-          isDragging.current = false
-          activeCube.current = null
-        }
-        
+        // In the Scene component, change handlePointerUp:
+const handlePointerUp = (e: PointerEvent) => {
+  const dragDuration = Date.now() - dragStartTime.current
+  const dragTotalDistance = dragDistance.current.x + dragDistance.current.y
+  
+  // Consider it a click only if drag was short in time and distance
+  const isClick = dragDuration < 200 && dragTotalDistance < 10
+  
+  if (!isClick && wasRotating.current) {
+    wasRotating.current = true
+    setWasRotatingState(true)
+    console.log("Finished rotating scene, temporarily disabling interactions");
+  } else if (isClick) {
+    // This was a clean click, always enable interaction for clicks
+    wasRotating.current = false;
+    setWasRotatingState(false);
+    allowInteraction.current = true;
+    console.log("Clean click detected, enabling interactions");
+  }
+  
+  isDragging.current = false
+  activePanel.current = null  // Changed from activeCube to activePanel
+}
         // Force enable interaction when user does a click with no drag
         const handleClick = (e: MouseEvent) => {
           if (!wasRotating.current && dragDistance.current.x < 5 && dragDistance.current.y < 5) {
@@ -916,7 +918,7 @@ const handleMediaRotation = (index: number, deltaX: number, deltaY: number, base
             const zoomSpeed = 0.1
             const delta = e.deltaY > 0 ? 1 : -1
             camera.position.z += delta * zoomSpeed
-            camera.position.z = Math.max(-5, Math.min(15, camera.position.z))
+            camera.position.z = Math.max(-5, Math.min(11, camera.position.z))
           }
         }
         
