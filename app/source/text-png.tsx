@@ -21,6 +21,32 @@ interface MediaState {
     height: number
   }
   
+  const ZOOM_LEVELS = {
+    // Max zoom out (overview of entire scene)
+    overview: {
+      landscape: 10,
+      portrait: 12
+    },
+    // Focus on back layer
+    backLayer: {
+      landscape: 6,
+      portrait: 4
+    },
+    // Focus on front layer
+    frontLayer: {
+      landscape: 3,
+      portrait: 2
+    }
+  };
+  
+  // Helper function to get the appropriate zoom level based on context
+  const getZoomLevel = (context: {
+    layer: 'overview' | 'frontLayer' | 'backLayer',
+    isLandscape: boolean
+  }) => {
+    return ZOOM_LEVELS[context.layer][context.isLandscape ? 'landscape' : 'portrait'];
+  };
+  
 
 interface ResponsiveImageStripProps {
   imagePaths: string[]
@@ -218,30 +244,30 @@ export function ResponsiveImageStrip({
   })
 
   // Function to handle image click
-  const handleClick = (index: number, position: THREE.Vector3, isBack: boolean) => {
-    // Debug console to verify click is registered
-    console.log("Image clicked:", index, "interaction enabled:", interactionEnabled.current);
+  const handleMediaClick = (index: number, position: THREE.Vector3, isBack: boolean) => {
+    const isLandscape = viewport.width > viewport.height;
     
-    if (!interactionEnabled.current) {
-      console.log("Interaction disabled, ignoring click");
-      return;
-    }
-
     if (focusedIndex === index) {
-      targetPosition.current.set(0, 0, 0)
-      // Different reset zoom based on layer
-      targetZoom.current = isBack ? 8 : 5  // Back layer resets to max zoom out
-      setFocusedIndex(null)
+      // Reset to overview
+      targetPosition.current.set(0, 0, 0);
+      targetZoom.current = getZoomLevel({ 
+        layer: 'overview', 
+        isLandscape 
+      });
+      setFocusedIndex(null);
     } else {
-      targetPosition.current.copy(position)
-      // Different zoom levels for front and back layers
-      targetZoom.current = isBack ? 6 : 3
-      setFocusedIndex(index)
+      // Focus on item
+      targetPosition.current.copy(position);
+      targetZoom.current = getZoomLevel({ 
+        layer: isBack ? 'backLayer' : 'frontLayer', 
+        isLandscape 
+      });
+      setFocusedIndex(index);
     }
-    animating.current = true
-  }
+    animating.current = true;
+  };
+  
 
-  // Update click outside handler
   useEffect(() => {
     const handlePointerDown = (e: PointerEvent) => {
       if (!interactionEnabled.current) return;
@@ -250,26 +276,30 @@ export function ResponsiveImageStrip({
         const mouse = new THREE.Vector2(
           (e.clientX / window.innerWidth) * 2 - 1, 
           -(e.clientY / window.innerHeight) * 2 + 1
-        )
+        );
         
-        const raycaster = new THREE.Raycaster()
-        raycaster.setFromCamera(mouse, camera)
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, camera);
         
-        const intersects = raycaster.intersectObjects(groupRef.current?.children || [])
+        const intersects = raycaster.intersectObjects(groupRef.current?.children || []);
         
         if (intersects.length === 0) {
-          targetPosition.current.set(0, 0, 0)
-          // Different reset zoom based on layer
-          targetZoom.current = isBackLayer ? 10 : 5  // Back layer resets to max zoom out
-          setFocusedIndex(null)
-          animating.current = true
+          targetPosition.current.set(0, 0, 0);
+          const isLandscape = viewport.width > viewport.height;
+          targetZoom.current = getZoomLevel({ 
+            layer: 'overview', 
+            isLandscape 
+          });
+          setFocusedIndex(null);
+          animating.current = true;
         }
       }
-    }
+    };
     
-    window.addEventListener('pointerdown', handlePointerDown)
-    return () => window.removeEventListener('pointerdown', handlePointerDown)
-  }, [focusedIndex, camera, isBackLayer]);
+    window.addEventListener('pointerdown', handlePointerDown);
+    return () => window.removeEventListener('pointerdown', handlePointerDown);
+  }, [focusedIndex, camera, viewport.width, viewport.height]);
+  
 
   if (images.length === 0) return null
 
@@ -375,7 +405,7 @@ export function ResponsiveImageStrip({
               e.stopPropagation();
               console.log(`Click on image ${i}, layer: ${isBackLayer ? 'back' : 'front'}`);
               const basePosition = e.object.userData.basePosition;
-              handleClick(i, basePosition, isBackLayer);
+              handleMediaClick(i, basePosition, isBackLayer);
               if (onRotate && e.object.userData.layer === 'front') {
                 onRotate(i, 0, 0, basePosition);
               }
@@ -489,26 +519,28 @@ export function ResponsiveTextStrip({
   
     // Function to handle text panel click
    // In ResponsiveTextStrip component
-const handleTextClick = (index: number, position: THREE.Vector3, isBack: boolean) => {
-  const isLandscape = viewport.width > viewport.height
-
-  if (focusedIndex === index) {
-    targetPosition.current.set(0, 0, 0)
-    // Different reset zoom based on layer and orientation
-    targetZoom.current = isLandscape
-      ? (isBack ? 8 : 5)        // Landscape mode
-      : (isBack ? 11 : 10)       // Portrait mode - increased zoom out distance
-    setFocusedIndex(null)
-  } else {
-    targetPosition.current.copy(position)
-    // Different zoom levels for front/back and orientation
-    targetZoom.current = isLandscape
-      ? (isBack ? 6 : 3)        // Landscape mode
-      : (isBack ? 4 : 2)        // Portrait mode - decreased zoom in for better view
-    setFocusedIndex(index)
-  }
-  animating.current = true
-}
+   const handleMediaClick = (index: number, position: THREE.Vector3, isBack: boolean) => {
+    const isLandscape = viewport.width > viewport.height;
+    
+    if (focusedIndex === index) {
+      // Reset to overview
+      targetPosition.current.set(0, 0, 0);
+      targetZoom.current = getZoomLevel({ 
+        layer: 'overview', 
+        isLandscape 
+      });
+      setFocusedIndex(null);
+    } else {
+      // Focus on item
+      targetPosition.current.copy(position);
+      targetZoom.current = getZoomLevel({ 
+        layer: isBack ? 'backLayer' : 'frontLayer', 
+        isLandscape 
+      });
+      setFocusedIndex(index);
+    }
+    animating.current = true;
+  };
   
     // Update click outside handler
    // In ResponsiveTextStrip component, update the handlePointerDown useEffect
@@ -675,7 +707,7 @@ useEffect(() => {
                 e.stopPropagation();
                 console.log(`Click on text panel ${i}, layer: ${isBackLayer ? 'back' : 'front'}`);
                 const basePosition = e.object.userData.basePosition;
-                handleTextClick(i, basePosition, isBackLayer);
+                handleMediaClick(i, basePosition, isBackLayer);
                 if (onRotate && e.object.userData.layer === 'front') {
                   onRotate(i, 0, 0, basePosition);
                 }
@@ -712,7 +744,7 @@ useEffect(() => {
 
 // Main Scene Component
 function Scene() {
-  const { scene, camera, gl } = useThree()
+  const { scene, camera, gl, viewport } = useThree()
   const isDragging = useRef(false)
   const [wasRotatingState, setWasRotatingState] = useState(false)
   const wasRotating = useRef(false)
@@ -722,6 +754,7 @@ function Scene() {
   const activePanel = useRef<THREE.Mesh | null>(null)
   const allowInteraction = useRef(true)
   const interactionResetTimer = useRef<NodeJS.Timeout | null>(null)
+  
 
   // Define front image paths
   const imagePaths = [
@@ -755,7 +788,33 @@ function Scene() {
 
   const backLayerStates = pentagonOrder.map(i => mediaStates[i])
 
+  const ZOOM_LEVELS = {
+    // Max zoom out (overview of entire scene)
+    overview: {
+      landscape: 10,
+      portrait: 12
+    },
+    // Focus on back layer
+    backLayer: {
+      landscape: 6,
+      portrait: 4
+    },
+    // Focus on front layer
+    frontLayer: {
+      landscape: 3,
+      portrait: 2
+    }
+  };
   
+  // Helper function to get the appropriate zoom level based on context
+  const getZoomLevel = (context: {
+    layer: 'overview' | 'frontLayer' | 'backLayer',
+    isLandscape: boolean
+  }) => {
+    return ZOOM_LEVELS[context.layer][context.isLandscape ? 'landscape' : 'portrait'];
+  };
+
+
   const getBackPosition = (rotation: THREE.Euler, basePosition: THREE.Vector3) => {
     const maxOffset = 3 // Increased from 0.5 for more dramatic movement
     return new THREE.Vector3(
@@ -902,7 +961,7 @@ const handlePointerUp = (e: PointerEvent) => {
   activePanel.current = null  // Changed from activeCube to activePanel
 }
         // Force enable interaction when user does a click with no drag
-        const handleClick = (e: MouseEvent) => {
+        const handleMediaClick = (e: MouseEvent) => {
           if (!wasRotating.current && dragDistance.current.x < 5 && dragDistance.current.y < 5) {
             wasRotating.current = false;
             setWasRotatingState(false);
@@ -911,30 +970,50 @@ const handlePointerUp = (e: PointerEvent) => {
           }
         }
         
-        const handleWheel = (e: WheelEvent) => {
-          e.preventDefault()
-          // Only allow zoom if not rotating
-          if (!wasRotating.current) {
-            const zoomSpeed = 0.1
-            const delta = e.deltaY > 0 ? 1 : -1
-            camera.position.z += delta * zoomSpeed
-            camera.position.z = Math.max(-5, Math.min(11, camera.position.z))
-          }
-        }
-        
-        // Double-click to reset rotation and interaction state
         const handleDoubleClick = () => {
-          scene.rotation.set(0, 0, 0)
-          wasRotating.current = false
-          setWasRotatingState(false)
-          allowInteraction.current = true
+          scene.rotation.set(0, 0, 0);
+          const isLandscape = viewport.width > viewport.height;
+          
+          // Reset camera position and zoom
+          targetPosition.current.set(0, 0, 0);
+          targetZoom.current = getZoomLevel({ 
+            layer: 'overview', 
+            isLandscape 
+          });
+          animating.current = true;
+          
+          wasRotating.current = false;
+          setWasRotatingState(false);
+          allowInteraction.current = true;
+          setFocusedIndex(null);
+          
           console.log("Double-click detected, resetting scene and enabling interactions");
-        }
+        };
+        
+        // 5. Also update the wheel handler to respect the same min/max bounds:
+       // In the Scene component, update the handleWheel function
+const handleWheel = (e: WheelEvent) => {
+  e.preventDefault();
+  // Only allow zoom if not rotating
+  if (!wasRotating.current) {
+    const zoomSpeed = 0.1;
+    const delta = e.deltaY > 0 ? 1 : -1;
+    
+    const isLandscape = viewport.width > viewport.height;
+    
+    // Get current bounds
+    const minZoom = ZOOM_LEVELS.frontLayer[isLandscape ? 'landscape' : 'portrait'] - 1;
+    const maxZoom = ZOOM_LEVELS.overview[isLandscape ? 'landscape' : 'portrait'] + 2;
+    
+    const newZoom = camera.position.z + delta * zoomSpeed;
+    camera.position.z = Math.max(minZoom, Math.min(maxZoom, newZoom));
+  }
+};
         
         window.addEventListener('pointerdown', handlePointerDown)
         window.addEventListener('pointermove', handlePointerMove)
         window.addEventListener('pointerup', handlePointerUp)
-        window.addEventListener('click', handleClick)
+        window.addEventListener('click', handleMediaClick)
         window.addEventListener('dblclick', handleDoubleClick)
         canvas.addEventListener('wheel', handleWheel, { passive: false })
         
@@ -942,7 +1021,7 @@ const handlePointerUp = (e: PointerEvent) => {
           window.removeEventListener('pointerdown', handlePointerDown)
           window.removeEventListener('pointermove', handlePointerMove)
           window.removeEventListener('pointerup', handlePointerUp)
-          window.removeEventListener('click', handleClick)
+          window.removeEventListener('click', handleMediaClick)
           window.removeEventListener('dblclick', handleDoubleClick)
           canvas.removeEventListener('wheel', handleWheel)
         }
