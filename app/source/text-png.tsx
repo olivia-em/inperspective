@@ -25,7 +25,7 @@ interface MediaState {
     // Max zoom out (overview of entire scene)
     overview: {
       landscape: 10,
-      portrait: 12
+      portrait: 6
     },
     // Focus on back layer
     backLayer: {
@@ -690,6 +690,7 @@ useEffect(() => {
           const scale = isBackLayer ? 
             (focusedIndex === i ? 4 : 4) : // Larger scale for back layer
             (focusedIndex === i ? 1.1 : 1.0);   // Original scale for front layer
+            
   
         
           return (
@@ -745,6 +746,10 @@ useEffect(() => {
 // Main Scene Component
 function Scene() {
   const { scene, camera, gl, viewport } = useThree()
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null)
+  const targetPosition = useRef(new THREE.Vector3(0, 0, 0))
+  const targetZoom = useRef(5)
+  const animating = useRef(false)
   const isDragging = useRef(false)
   const [wasRotatingState, setWasRotatingState] = useState(false)
   const wasRotating = useRef(false)
@@ -792,7 +797,7 @@ function Scene() {
     // Max zoom out (overview of entire scene)
     overview: {
       landscape: 10,
-      portrait: 12
+      portrait: 6
     },
     // Focus on back layer
     backLayer: {
@@ -969,7 +974,7 @@ const handlePointerUp = (e: PointerEvent) => {
             console.log("Click detected, enabling interactions");
           }
         }
-        
+
         const handleDoubleClick = () => {
           scene.rotation.set(0, 0, 0);
           const isLandscape = viewport.width > viewport.height;
@@ -990,8 +995,7 @@ const handlePointerUp = (e: PointerEvent) => {
           console.log("Double-click detected, resetting scene and enabling interactions");
         };
         
-        // 5. Also update the wheel handler to respect the same min/max bounds:
-       // In the Scene component, update the handleWheel function
+
 const handleWheel = (e: WheelEvent) => {
   e.preventDefault();
   // Only allow zoom if not rotating
@@ -1002,8 +1006,8 @@ const handleWheel = (e: WheelEvent) => {
     const isLandscape = viewport.width > viewport.height;
     
     // Get current bounds
-    const minZoom = ZOOM_LEVELS.frontLayer[isLandscape ? 'landscape' : 'portrait'] - 1;
-    const maxZoom = ZOOM_LEVELS.overview[isLandscape ? 'landscape' : 'portrait'] + 2;
+    const minZoom = ZOOM_LEVELS.frontLayer[isLandscape ? 'landscape' : 'portrait'] - 5;
+    const maxZoom = ZOOM_LEVELS.overview[isLandscape ? 'landscape' : 'portrait'] + 1;
     
     const newZoom = camera.position.z + delta * zoomSpeed;
     camera.position.z = Math.max(minZoom, Math.min(maxZoom, newZoom));
