@@ -1,53 +1,5 @@
-# Welcome to React Router!
+### Lessons in Perspective
 
-A modern, production-ready template for building full-stack React applications using React Router.
+I’m currently working on a web based poetry collection for the courses Code Your Way & Computational Approaches to Narrative. It’s about how the way you let people treat you may be connected to your past. I’m really interested in poetics beyond words, and how metaphor or meaning can be conveyed through structure as well. This is the basis of concrete poetry, but I want to push past that and explore how interactivity, three dimensionality, or other forms of dynamics might carry meaning in new ways.
 
-## Features
-
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
-
-## Getting Started
-
-### Installation
-
-Install the dependencies:
-
-```bash
-npm install
-```
-
-### Development
-
-Start the development server with HMR:
-
-```bash
-npm run dev
-```
-
-Your application will be available at `http://localhost:3000`.
-
-## Building for Production
-
-Create a production build:
-
-```bash
-npm run build
-```
-
-## Deployment
-
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/remix-run/react-router-templates&create_from_path=netlify)
-
-## Styling
-
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
-
----
-
-Built with ❤️ using React Router.
+Note: This is in progress for the end of the semester, so some content and interaction is missing or will be changed. Currently you can click to zoom in on specific objects, zoom in and out, rotate objects, and rotate the scene.
