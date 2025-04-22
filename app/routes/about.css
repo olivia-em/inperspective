@@ -72,8 +72,8 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    margin-top: 20%;
-    margin-left: 2rem;
+    margin-top: 50vh;
+    margin-left: 0rem;
   }
   
   #sketch-container canvas {
@@ -85,28 +85,26 @@
     display: flex;
     justify-content: left;
     align-items: center;
-    margin-right: 2rem;
-    margin-left: 2rem;
+    margin: 0;
   }
   
   div#titleDiv p {
     font-size: 1.25rem;
     text-align: left;
-    margin: 10px;
+    margin: 0;
   }
 
 div#questionDiv {
     display: flex;
     justify-content: left;
     align-items: center;
-    margin-right: 2rem;
-    margin-left: 2rem;
+    margin: 0;
   }
   
   div#questionDiv p {
     font-size: 1rem;
     text-align: left;
-    margin: 10px;
+    margin: 0;
   }
 
 
@@ -115,14 +113,13 @@ div#memoryDiv {
     display: flex;
     justify-content: left;
     align-items: center;
-    margin-right: 2rem;
-    margin-left: 2rem;
+    margin: 0;
   }
   
   div#memoryDiv p {
     font-size: 1rem;
     text-align: left;
-    margin: 10px;
+    margin: 0;
   }
 
 
@@ -130,42 +127,39 @@ div#introDiv {
     display: flex;
     justify-content: left;
     align-items: center;
-    margin-right: 2rem;
-    margin-left: 2rem;
+    margin: 0;
   }
   
   div#introDiv p {
     font-size: 1rem;
     text-align: left;
-    margin: 10px;
+    margin: 0;
   }
 
   div#outroDiv {
     display: flex;
     justify-content: left;
     align-items: center;
-    margin-right: 2rem;
-    margin-left: 2rem;
+    margin: 0;
   }
   
   div#outroDiv p {
     font-size: 1rem;
     text-align: left;
-    margin: 10px;
+    margin: 0;
   }
 
   div#hallucinationDiv {
     display: flex;
     justify-content: left;
     align-items: center;
-    margin-right: 2rem;
-    margin-left: 2rem;
+    margin: 0;
   }
   
   div#hallucinationDiv p {
     font-size: 1rem;
     text-align: left;
-    margin: 10px;
+    margin: 0;
   }
 
  
