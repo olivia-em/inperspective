@@ -1,5 +1,5 @@
 //import Cubez from "./Cubez"
-import Cubez from "./text-png"
+import Cubez from "./final"
 //import Cubez from "./perspective2"
 //import ImageGallery from "./ResponsiveImageStrip"
 
