@@ -75,6 +75,8 @@
 #sketch-container {
     position: relative;
     width: 100%;
+    /* top: 50vh;
+    height: 100%; */
     display: flex;
     flex-direction: column;
     justify-content: center;
