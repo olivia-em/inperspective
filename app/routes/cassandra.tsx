@@ -105,11 +105,11 @@ const P5Sketch: React.FC = () => {
             intervalIds.current = []
 
             // Create divs
-            const prev = document.getElementById("titleDiv")
+            // const prev = document.getElementById("titleDiv")
 
-            if (prev && prev.parentNode) {
-                prev.parentNode.removeChild(prev)
-              }
+            // if (prev && prev.parentNode) {
+            //     prev.parentNode.removeChild(prev)
+            //   }
 
             titleDiv = p.createDiv("<strong><p>CASS&RA</p></strong>").id("titleDiv");
             questionDiv = p.createDiv('').id('questionDiv')
@@ -125,6 +125,7 @@ const P5Sketch: React.FC = () => {
               )
 
               const children = [
+                titleDiv.elt,
                 questionDiv.elt,
                 introDiv.elt,
                 memoryDiv.elt,
