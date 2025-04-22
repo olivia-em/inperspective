@@ -114,6 +114,7 @@ div#questionDiv {
     font-size: 1rem;
     text-align: left;
     margin-top: 10px;
+    margin-bottom: 10px;
   }
 
 
@@ -129,6 +130,7 @@ div#memoryDiv {
     font-size: 1rem;
     text-align: left;
     margin-top: 10px;
+    margin-bottom: 10px;
   }
 
 
@@ -143,6 +145,7 @@ div#introDiv {
     font-size: 1rem;
     text-align: left;
     margin-top: 10px;
+    margin-bottom: 10px;
   }
 
   div#outroDiv {
@@ -156,6 +159,7 @@ div#introDiv {
     font-size: 1rem;
     text-align: left;
     margin-top: 10px;
+    margin-bottom: 10px;
   }
 
   div#hallucinationDiv {
@@ -169,6 +173,7 @@ div#introDiv {
     font-size: 1rem;
     text-align: left;
     margin-top: 10px;
+    margin-bottom: 10px;
   }
 
  
