@@ -5,10 +5,10 @@
   html,
   body {
     width: 100%;
-    height: 150vh;
+    /* height: 150vh; */
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: left;
     margin: 0;
     padding: 0;
@@ -37,7 +37,7 @@
 
   div.about-container {
     width: 100%;
-    height: 100%;
+    /* height: 100%; */
     flex-direction: column;
     justify-content: center;
     align-items: left;
@@ -67,6 +67,11 @@
     text-wrap: wrap;
   }
 
+  h1 {
+    margin: 0;
+    margin-top: 20px;
+  }
+
 #sketch-container {
     position: relative;
     width: 100%;
@@ -92,6 +97,7 @@
   div#titleDiv p {
     font-size: 1.25rem;
     text-align: left;
+    margin-bottom: 10px;
     margin-top: 10px;
   }
 
