@@ -176,4 +176,37 @@ div#introDiv {
     margin-bottom: 10px;
   }
 
- 
+
+/* Mobile styles */
+@media screen and (max-width: 768px) {
+  html,
+  body {
+    font-size: 12pt;
+  }
+
+  div#titleDiv p {
+    font-size: 1rem;
+  }
+
+  div#questionDiv p,
+  div#memoryDiv p,
+  div#introDiv p,
+  div#outroDiv p,
+  div#hallucinationDiv p {
+    font-size: 0.8rem;
+  }
+
+  p.desc {
+    font-size: 12pt;
+    max-width: 90vw;
+  }
+
+  div.about-content {
+    margin-left: 1rem;
+  }
+
+  #sketch-container {
+    font-size: 12pt;
+    margin-left: 1rem;
+  }
+}
