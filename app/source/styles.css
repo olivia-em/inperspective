@@ -25,3 +25,15 @@ canvas {
   touch-action: none;
   aspect-ratio: ;
 }
+
+#sketch-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin: 2rem 0;
+}
+
+#sketch-container canvas {
+  max-width: 100%;
+  height: auto;
+}

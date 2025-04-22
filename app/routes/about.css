@@ -1,0 +1,158 @@
+* {
+    box-sizing: border-box;
+  }
+  
+  html,
+  body {
+    width: 100%;
+    height: 150vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: left;
+    margin: 0;
+    padding: 0;
+    font-family:'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+    font-size: 20px;
+    background: #f0f0f0;
+    color: #000000;
+  }
+  
+  main {
+    width: 0%;
+    height: 0%;
+  }
+
+  a,a:visited {
+    text-decoration: none;
+    color: #000000;
+    font-weight: bold;
+  }
+
+  a:hover {
+    color: #FFFFFF;
+  }
+
+
+
+  div.about-container {
+    width: 100%;
+    height: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: flex;
+    /* flex-direction: column;
+    justify-content: center;
+    align-items: left; */
+    text-align: left;
+    margin-left: 2rem;
+    padding: 0;
+  }
+
+  p.desc {
+    height: auto;
+    max-width: 80vw;
+    text-wrap: wrap;
+  }
+
+#sketch-container {
+    width: 0%;
+    display: flex;
+    justify-content: center;
+    margin: 0rem 0;
+  }
+  
+  #sketch-container canvas {
+    max-width: 0%;
+    height: 0%;
+  }
+
+  div#titleDiv {
+    display: flex;
+    justify-content: left;
+    align-items: center;
+    margin-right: 2rem;
+    margin-left: 2rem;
+  }
+  
+  div#titleDiv p {
+    font-size: 1.25rem;
+    text-align: left;
+    margin: 10px;
+  }
+
+div#questionDiv {
+    display: flex;
+    justify-content: left;
+    align-items: center;
+    margin-right: 2rem;
+    margin-left: 2rem;
+  }
+  
+  div#questionDiv p {
+    font-size: 1rem;
+    text-align: left;
+    margin: 10px;
+  }
+
+
+
+div#memoryDiv {
+    display: flex;
+    justify-content: left;
+    align-items: center;
+    margin-right: 2rem;
+    margin-left: 2rem;
+  }
+  
+  div#memoryDiv p {
+    font-size: 1rem;
+    text-align: left;
+    margin: 10px;
+  }
+
+
+div#introDiv {
+    display: flex;
+    justify-content: left;
+    align-items: center;
+    margin-right: 2rem;
+    margin-left: 2rem;
+  }
+  
+  div#introDiv p {
+    font-size: 1rem;
+    text-align: left;
+    margin: 10px;
+  }
+
+  div#outroDiv {
+    display: flex;
+    justify-content: left;
+    align-items: center;
+    margin-right: 2rem;
+    margin-left: 2rem;
+  }
+  
+  div#outroDiv p {
+    font-size: 1rem;
+    text-align: left;
+    margin: 10px;
+  }
+
+  div#hallucinationDiv {
+    display: flex;
+    justify-content: left;
+    align-items: center;
+    margin-right: 2rem;
+    margin-left: 2rem;
+  }
+  
+  div#hallucinationDiv p {
+    font-size: 1rem;
+    text-align: left;
+    margin: 10px;
+  }
+
+ 

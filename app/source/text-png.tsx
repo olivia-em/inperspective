@@ -1,6 +1,40 @@
 import React, { useRef, useState, useEffect } from 'react'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { Text } from '@react-three/drei'
+
+function AboutLink({ position = [0, -8, -3] }: { position?: [number, number, number] }) {
+  const { viewport } = useThree()
+  const isLandscape = viewport.width > viewport.height
+  const [hovered, setHovered] = useState(false) // Add this state
+
+  return (
+    <Text
+      position={position}
+      rotation={[-3*Math.PI / 4, 0, 0]}
+      fontSize={isLandscape ? 0.5 : 0.3}
+      color={hovered ? '#000000' : '#ffffff'} // Change color based on hover state
+      anchorX="center"
+      anchorY="middle"
+      onClick={(e) => {
+        e.stopPropagation()
+        window.location.href = '/about'
+      }}
+      onPointerOver={(e) => {
+        document.body.style.cursor = 'pointer'
+        setHovered(true) // Update hover state
+        e.object.scale.set(1.1, 1.1, 1.1)
+      }}
+      onPointerOut={(e) => {
+        document.body.style.cursor = 'auto'
+        setHovered(false) // Reset hover state
+        e.object.scale.set(1, 1, 1)
+      }}
+    >
+      ABOUT
+    </Text>
+  )
+}
 
 // First, update the interfaces to handle both media types
 interface MediaState {
@@ -1069,8 +1103,10 @@ const handleWheel = (e: WheelEvent) => {
             fontSize={24}
           />
     
-          <ambientLight intensity={4} />
-          <pointLight position={[0, 0, 5]} />
+      <AboutLink />
+    
+      <ambientLight intensity={4} />
+      <pointLight position={[0, 0, 5]} />
         </>
       )
     }

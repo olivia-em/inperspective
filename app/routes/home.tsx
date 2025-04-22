@@ -1,6 +1,25 @@
+// import { Link } from "react-router";
+// import type { Route } from "./+types/home";
+// import { Source } from "../source/source";
+
+// export function meta({}: Route.MetaArgs) {
+//   return [
+//     { title: "Lessons in Perspective" },
+//     { name: "Visual Poetry Collection"},
+//   ];
+// }
+
+// export default function Home({ loaderData }: Route.ComponentProps) {
+//   return (
+//     <>
+//       <Source />
+//     </>
+//   );
+// }
+
+import { Link } from "react-router";
 import type { Route } from "./+types/home";
 import { Source } from "../source/source";
-// import { Welcome } from "../welcome/welcome";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -16,3 +35,4 @@ export function loader({ context }: Route.LoaderArgs) {
 export default function Home({ loaderData }: Route.ComponentProps) {
   return <Source />;
 }
+
