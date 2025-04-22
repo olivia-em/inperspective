@@ -19,7 +19,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
         />
         <Meta />
-        <link rel="icon" href="./public/LIP.png" />
+        <link rel="icon" href="/assets/LIP.png" />
         <Links />
       </head>
       <body>
