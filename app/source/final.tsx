@@ -869,7 +869,7 @@ function Scene() {
       "I hadn't known it was a tug of war, until I woke up on his playing field finding nothing I could grasp. When I looked back at myself, all I saw was rope.",
       "Before you, the only false prophet I'd met was at the head of a childhood dinner table. I feel knee-high again and totally agnostic.",
       "I'd never felt so degraded as when I begged to follow someone lost. And then you crueler: to not admit where you stood on me, but expect I shed your weight alone.",
-      "The night I attended the death of respect among bean bags on the floor, I spiraled home alone. My depth had only gone so far as my body, but icon or object… I hadn't known. Like with him, there won't be hauntings, but I'll gladly be a ghost.",
+      "I attended the death of respect among bean bags on the floor--felt boiled down to all things tangible. As with him, now with you: I'm glad to be a ghost, but skin-deep hauntings I won't do.",
       "I used to have a friend who double-crossed me out of spite; the resemblance is uncanny, like how you stare when someone cries."
     ]
   
